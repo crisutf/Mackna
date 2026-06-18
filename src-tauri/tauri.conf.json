@@ -7,7 +7,7 @@
     },
     "package": {
         "productName": "Leilos Launcher",
-        "version": "1.1.4"
+        "version": "1.1.5"
     },
     "tauri": {
         "allowlist": {
@@ -21,8 +21,8 @@
             "http": {
                 "all": true,
                 "scope": [
-                    "https://api.leilos.qzz.io/*",
-                    "https://cdn.leilos.qzz.io/*"
+                    "https://backend-leilos-services.crisu.qzz.io/",
+                    "https://cdn.crisu.qzz.io/"
                 ]
             },
             "fs": {
@@ -62,7 +62,6 @@
                 "icons/icon.ico"
             ],
             "resources": [
-                "dlls"
             ],
             "windows": {
                 "certificateThumbprint": null,

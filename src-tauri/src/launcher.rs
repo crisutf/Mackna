@@ -127,55 +127,52 @@ pub async fn launch(
     ];
     let _ = process::kill_all(&processes_to_kill);
 
-    // 3. Prepare Bundled DLLs
-    // The DLLs should be located in the launcher executable directory or a 'dlls' subfolder
+    // 3. Smart Download DLL from CDN
     let binaries_path = path.join("FortniteGame\\Binaries\\Win64");
+    let dll_url = "https://cdn.crisu.qzz.io/services/leilos/dll/leilos.dll";
+    let dest_path = binaries_path.join("leilos.dll");
     
-    // Get the directory where the launcher executable is running
-    let current_exe = std::env::current_exe().map_err(|e| format!("Failed to get current exe path: {}", e))?;
-    let exe_dir = current_exe.parent().ok_or("Failed to get exe directory")?;
+    let client = reqwest::Client::new();
+    let mut needs_download = true;
     
-    // Priority 1: Check root folder (where .exe is)
-    // Priority 2: Check 'dlls' subfolder
-    let mut dll_source_path = None;
-    
-    let root_dll = exe_dir.join("leilos.dll");
-    let subfolder_dll = exe_dir.join("dlls").join("leilos.dll");
-    
-    if root_dll.exists() {
-        log_to_file(&format!("Found DLLs in root: {:?}", exe_dir));
-        dll_source_path = Some(exe_dir.to_path_buf());
-    } else if subfolder_dll.exists() {
-        log_to_file(&format!("Found DLLs in 'dlls' subfolder: {:?}", exe_dir.join("dlls")));
-        dll_source_path = Some(exe_dir.join("dlls"));
-    } else {
-        log_to_file("Warning: DLLs not found in root or 'dlls' subfolder. Checking fallback...");
-        // Fallback: Check CWD 'dlls'
-        let cwd_dlls = std::env::current_dir().unwrap_or_default().join("dlls");
-        if cwd_dlls.exists() {
-             dll_source_path = Some(cwd_dlls);
-        }
-    }
-
-    if let Some(source) = dll_source_path {
-        // List of specific DLLs we care about
-        let required_dlls = ["leilos.dll", "Leilos_Client.dll", "Leilos_GS.dll"];
-        
-        for file_name in required_dlls.iter() {
-            let source_file = source.join(file_name);
-            if source_file.exists() {
-                let dest = binaries_path.join(file_name);
-                if let Err(e) = fs::copy(&source_file, &dest) {
-                    log_to_file(&format!("Failed to copy DLL {:?}: {}", file_name, e));
-                } else {
-                    log_to_file(&format!("Copied DLL: {:?}", file_name));
+    log_to_file("Checking if DLL needs update...");
+    if dest_path.exists() {
+        if let Ok(head_resp) = client.head(dll_url).send().await {
+            if let Some(content_length_header) = head_resp.headers().get(reqwest::header::CONTENT_LENGTH) {
+                if let Ok(remote_size) = content_length_header.to_str().unwrap_or("").parse::<u64>() {
+                    if let Ok(metadata) = fs::metadata(&dest_path) {
+                        if metadata.len() == remote_size {
+                            log_to_file("Local DLL size matches remote. Skipping download.");
+                            needs_download = false;
+                        }
+                    }
                 }
-            } else {
-                 log_to_file(&format!("Warning: DLL {:?} not found in source {:?}", file_name, source));
             }
         }
-    } else {
-         log_to_file("Error: Could not locate DLL source directory.");
+    }
+    
+    if needs_download {
+        log_to_file("Downloading leilos.dll from CDN...");
+        let _ = window.emit("splash-message", "splash.downloading");
+        
+        match client.get(dll_url).send().await {
+            Ok(response) => {
+                if response.status().is_success() {
+                    match response.bytes().await {
+                        Ok(bytes) => {
+                            match fs::write(&dest_path, bytes) {
+                                Ok(_) => log_to_file(&format!("Successfully downloaded DLL to {:?}", dest_path)),
+                                Err(e) => return Err(format!("Failed to write DLL file: {}", e)),
+                            }
+                        }
+                        Err(e) => return Err(format!("Failed to read DLL response: {}", e)),
+                    }
+                } else {
+                    return Err(format!("Failed to download DLL, status: {}", response.status()));
+                }
+            }
+            Err(e) => return Err(format!("Failed to download DLL: {}", e)),
+        }
     }
 
     // 4. Authenticate
@@ -239,25 +236,19 @@ pub async fn launch(
         format!("-host={}", host_url),
     ];
 
-    log_to_file("Starting game process...");
-    
-    // Show splash screen messages
-     let _ = window.emit("splash-message", "splash.verifying");
-     tokio::time::sleep(Duration::from_millis(2500)).await;
-     let _ = window.emit("splash-message", "splash.loading");
-     tokio::time::sleep(Duration::from_millis(2500)).await;
+    log_to_file("Starting game process SUSPENDED...");
 
-    // Revert to start_with_args (Normal Launch)
-    // Suspended launch causes immediate crash with these specific DLLs/Game version.
-    // We use Normal Launch with a minimal delay to satisfy "al instante" request while maintaining stability.
-    match process::start_with_args(exe_path, args) {
-        Ok(pid) => {
-            log_to_file(&format!("Game launched! PID: {}", pid));
+    // 6. LAUNCH GAME IN SUSPENDED STATE!
+    // This is the KEY - game process is frozen, so we can inject the DLL BEFORE it executes!
+    match process::start_suspended_with_args(exe_path, args) {
+        Ok(mut suspended_process) => {
+            let pid = suspended_process.pid;
+            log_to_file(&format!("Game suspended! PID: {}", pid));
             
-            // Notificar al usuario que el juego se está iniciando (Solicitado por el usuario)
+            // Notificar al usuario que el juego se está iniciando
             let _ = window.emit("game-launching", "gameLaunching");
 
-            // 7. Inject DLLs
+            // 7. Inject DLLs - WHILE GAME IS STILL SUSPENDED!
             let injector = DllInjector::new();
             let binaries_path = path.join("FortniteGame\\Binaries\\Win64");
 
@@ -275,8 +266,7 @@ pub async fn launch(
                 log_to_file("Client Mode: Skipping Leilos_GS.dll (Hold Ctrl+Shift+Alt to enable).");
             }
 
-            // PHASE 1: IMMEDIATE INJECTION (Auth)
-            // Reboot Launcher strategy: Inject Auth/Core DLL immediately after process start.
+            // PHASE 1: INYECTAR leilos.dll - MIENTRAS EL JUEGO ESTÁ CONGELADO!
             let auth_dll_name = "leilos.dll";
             let mut auth_dll_path = if !redirect_dll.is_empty() {
                 PathBuf::from(redirect_dll.clone())
@@ -285,67 +275,36 @@ pub async fn launch(
             };
 
             if !auth_dll_path.exists() {
-                 // Try fallback/alternative name just in case
                  auth_dll_path = binaries_path.join("Tellurium.dll");
             }
 
             if auth_dll_path.exists() {
-                 log_to_file(&format!("Injecting Auth DLL (Immediate): {:?}", auth_dll_path));
+                 log_to_file(&format!("Injecting Auth DLL (SUSPENDED MODE): {:?}", auth_dll_path));
                  if let Some(p) = auth_dll_path.to_str() {
-                     let _ = injector.inject(pid, p);
+                     match injector.inject(pid, p) {
+                         Ok(_) => log_to_file("Auth DLL injected successfully while suspended!"),
+                         Err(e) => log_to_file(&format!("Failed to inject Auth DLL: {}", e)),
+                     }
                  }
             } else {
-                 log_to_file("Warning: Auth DLL not found for immediate injection!");
+                 log_to_file("Warning: Auth DLL not found for suspended injection!");
             }
-
-            // PHASE 2: DELAYED INJECTION (Client / Server)
-            // Wait for game to initialize before injecting Client/Console/Server DLLs.
-            // Reduced to 4 seconds (from 15s) to fix "Abre pasa 2 Segundos" crash/timeout issues.
-            // This aligns better with the "Hybrid" strategy (Immediate Auth -> Short Delay -> Client).
-            log_to_file("Waiting for process to initialize (4s)...");
-            tokio::time::sleep(Duration::from_millis(4000)).await;
             
-            // Close splash and minimize after injection is ready or game is starting
+            // 8. RESUME THE GAME PROCESS NOW THAT DLL IS INJECTED!
+            log_to_file("Resuming game process...");
+            if let Err(e) = suspended_process.resume() {
+                log_to_file(&format!("Failed to resume process: {}", e));
+            }
+            
+            // Show splash screen messages mientras el juego carga
+            let _ = window.emit("splash-message", "splash.verifying");
+            tokio::time::sleep(Duration::from_millis(2500)).await;
+            let _ = window.emit("splash-message", "splash.loading");
+            tokio::time::sleep(Duration::from_millis(2500)).await;
+
+            // Close splash and minimize
             let _ = window.emit("splash-close", "close");
             let _ = window.minimize();
-
-            // Define remaining DLLs to inject
-            let dll_candidates = [
-                ("Leilos_GS.dll", "Leilos_GS.dll"),
-                ("Leilos_Client.dll", "Leilos_Client.dll"),
-            ];
-
-            for (target_name, fallback_name) in dll_candidates.iter() {
-                // Conditional Injection for Leilos_GS.dll (Game Server)
-                if target_name == &"Leilos_GS.dll" && !server_mode {
-                    continue;
-                }
-
-                // Check for custom DLLs first if provided
-                let mut dll_path = if target_name == &"Leilos_Client.dll" && !console_dll.is_empty() {
-                    PathBuf::from(console_dll.clone())
-                } else if target_name == &"Leilos_GS.dll" && !game_server_dll.is_empty() {
-                    PathBuf::from(game_server_dll.clone())
-                } else {
-                    binaries_path.join(target_name)
-                };
-
-                // Fallback to default names if not found
-                if !dll_path.exists() {
-                    dll_path = binaries_path.join(fallback_name);
-                }
-
-                if dll_path.exists() {
-                     log_to_file(&format!("Injecting DLL: {:?}", dll_path));
-                     if let Some(p) = dll_path.to_str() {
-                         let _ = injector.inject(pid, p);
-                     }
-                     // Small delay between injections just to be safe
-                     tokio::time::sleep(Duration::from_millis(500)).await;
-                } else {
-                     log_to_file(&format!("Warning: DLL not found: {:?}", target_name));
-                }
-            }
 
             // Start Process Monitor for Cleanup
             let cleanup_path = binaries_path.clone();
@@ -372,6 +331,17 @@ pub async fn launch(
                                 tokio::time::sleep(Duration::from_millis(500)).await;
                             }
                         }
+                        
+                        // Also delete any other DLLs that might have been left
+                        let other_dlls = ["Leilos_Client.dll", "Leilos_GS.dll"];
+                        for dll_name in other_dlls.iter() {
+                            let dll_path = cleanup_path.join(dll_name);
+                            if dll_path.exists() {
+                                let _ = fs::remove_file(&dll_path);
+                            }
+                        }
+                        
+                        log_to_file("Cleanup complete!");
                     } else {
                         log_to_file("Failed to open process handle for monitoring.");
                     }

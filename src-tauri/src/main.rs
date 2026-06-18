@@ -36,6 +36,10 @@ struct RpcClient {
 #[derive(Serialize, Clone)]
 struct AuthPayload {
     id: String,
+    username: String,
+    discord_id: String,
+    avatar: String,
+    is_admin: bool,
 }
 
 #[tauri::command]
@@ -161,14 +165,15 @@ async fn check_fortnite_version(path: String) -> Result<bool, String> {
     // Parse as JSON to check the BranchName
     if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
         if let Some(branch_name) = json.get("BranchName").and_then(|v| v.as_str()) {
-            if branch_name.contains("28.30") {
+            // Accept any 29.xx version (29.00, 29.01, 29.10, etc.)
+            if branch_name.contains("29.") {
                 return Ok(true);
             }
         }
     }
     
-    // Fallback if parsing fails or structure is slightly different, just check if the string contains "28.30"
-    if content.contains("28.30") {
+    // Fallback if parsing fails or structure is slightly different, just check if the string contains "29."
+    if content.contains("29.") {
         return Ok(true);
     }
 
@@ -230,19 +235,50 @@ fn main() {
                     let url = request.url().to_string();
                     
                     let response = if url.starts_with("/auth") {
-                        let mut user_id_found = None;
+                        let mut user_id = None;
+                        let mut username = None;
+                        let mut discord_id = None;
+                        let mut avatar = None;
+                        let mut is_admin = None;
+                        
                         if let Some(query) = url.split('?').nth(1) {
                             for param in query.split('&') {
-                                if param.starts_with("id=") {
-                                    user_id_found = Some(param[3..].to_string());
-                                    break;
+                                let parts: Vec<&str> = param.split('=').collect();
+                                if parts.len() == 2 {
+                                    let key = parts[0];
+                                    let value = urlencoding::decode(parts[1]).unwrap_or_default().into_owned();
+                                    match key {
+                                        "id" => user_id = Some(value),
+                                        "username" => username = Some(value),
+                                        "discordId" => discord_id = Some(value),
+                                        "avatar" => avatar = Some(value),
+                                        "isAdmin" => is_admin = Some(value == "true"),
+                                        _ => {}
+                                    }
                                 }
                             }
                         }
 
-                        if let Some(user_id) = user_id_found {
-                            println!("Received Auth ID: {}", user_id);
-                            let _ = app_handle.emit_all("auth-received", AuthPayload { id: user_id.clone() });
+                        if let (Some(user_id_val), Some(username_val), Some(discord_id_val)) = (user_id, username, discord_id) {
+                            println!("Received Auth: ID={}, Username={}, Discord={}", user_id_val, username_val, discord_id_val);
+                            
+                            // Guardamos clones de los valores que necesitamos después
+                            let discord_id_clone = discord_id_val.clone();
+                            let avatar_clone = avatar.clone();
+                            
+                            let _ = app_handle.emit_all("auth-received", AuthPayload { 
+                                id: user_id_val.clone(),
+                                username: username_val.clone(),
+                                discord_id: discord_id_val,
+                                avatar: avatar.unwrap_or_default(),
+                                is_admin: is_admin.unwrap_or(false),
+                            });
+                            
+                            let avatar_url = if let Some(av) = avatar_clone {
+                                format!("https://cdn.discordapp.com/avatars/{}/{}.png", discord_id_clone, av)
+                            } else {
+                                format!("https://cdn.discordapp.com/embed/avatars/{}.png", discord_id_clone.parse::<u64>().unwrap_or(0) % 5)
+                            };
                             
                             Response::from_string(format!(r#"
                                 <html>
@@ -330,11 +366,26 @@ fn main() {
                                                 text-align: left;
                                             }}
 
+                                            .user-avatar {{
+                                                width: 50px;
+                                                height: 50px;
+                                                border-radius: 50%;
+                                                border: 2px solid var(--primary);
+                                                object-fit: cover;
+                                            }}
+
                                             .user-id {{
                                                 font-family: 'Consolas', monospace;
                                                 color: var(--primary);
                                                 font-size: 0.9em;
                                                 letter-spacing: 1px;
+                                            }}
+
+                                            .user-name {{
+                                                font-family: var(--font-orbitron);
+                                                font-weight: bold;
+                                                font-size: 1.1em;
+                                                margin-bottom: 5px;
                                             }}
 
                                             h1 {{
@@ -399,12 +450,13 @@ fn main() {
                                     </head>
                                     <body>
                                         <div class="auth-card">
-                                            <h1>AUTHENTICATION<br>SUCCESSFUL</h1>
+                                            <h1>WELCOME BACK<br>{}</h1>
                                             
                                             <div class="user-info">
-                                                <div style="width: 40px; height: 40px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--bg-dark); font-weight: bold; font-family: var(--font-orbitron);">L</div>
+                                                <img class="user-avatar" src="{}" alt="Avatar" />
                                                 <div>
-                                                    <div style="font-size: 10px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 1px;">Session ID</div>
+                                                    <div class="user-name">{}</div>
+                                                    <div style="font-size: 10px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 1px;">ID</div>
                                                     <div class="user-id">{}</div>
                                                 </div>
                                             </div>
@@ -418,7 +470,7 @@ fn main() {
                                         </script>
                                     </body>
                                 </html>
-                            "#, user_id))
+                            "#, username_val.to_uppercase(), avatar_url, username_val, user_id_val))
                                 .with_header(tiny_http::Header::from_bytes(&b"Content-Type"[..], &b"text/html; charset=utf-8"[..]).unwrap())
                         } else {
                             Response::from_string("Missing ID").with_status_code(400)

@@ -1,6 +1,6 @@
 [package]
 name = "leilos-launcher"
-version = "1.0.6"
+version = "1.1.5"
 description = "Leilos Fortnite Launcher"
 authors = ["Leilos Team & Crisutf"]
 license = "GNU"
@@ -30,6 +30,7 @@ sysinfo = "0.29"
 discord-rich-presence = "0.2.4"
 open = "5.0"
 tiny_http = "0.12"
+urlencoding = "2.1"
 
 [features]
 # by default Tauri runs in production mode

@@ -1,5 +1,5 @@
 @echo off
-title Leilos - Close Fortnite v28.30
+title Leilos - Close Fortnite v29.00
 echo -----------------------------------------------
 echo     CERRANDO FORTNITE Y PROCESOS ASOCIADOS
 echo -----------------------------------------------

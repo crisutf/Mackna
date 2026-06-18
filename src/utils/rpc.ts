@@ -18,9 +18,9 @@ export interface RpcConfig {
 export async function RpcStart(config?: Partial<RpcConfig>): Promise<void> {
   const defaultConfig: RpcConfig = {
     client_id: "1468990040414880061", // Updated Client ID (Placeholder - User should update this)
-    state: "patata.leilos.qzz.io",
+    state: "Happy",
     details: ":)",
-    large_image: "https://cdn.leilos.qzz.io/public/media/images/logo/logo.jpg", // Ensure you upload an image named 'logo' to Discord Developer Portal
+    large_image: "https://cdn.crisu.qzz.io/services/leilos/logo/logo.jpg", // Ensure you upload an image named 'logo' to Discord Developer Portal
     large_text: "Leilos Launcher",
     small_image: "none",
     small_text: "none",

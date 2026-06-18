@@ -24,8 +24,8 @@ export const useConfigStore = create<ConfigState>()(
     persist(
         (set) => ({
             fortnitePath: '',
-            backendUrl: 'https://api.leilos.qzz.io',
-            hostUrl: 'http://api.leilos.qzz.io:7777',
+            backendUrl: 'https://backend-leilos-services.crisu.qzz.io',
+            hostUrl: 'http://backend-leilos-services.crisu.qzz.io:7777',
             redirectDLL: '',
             consoleDLL: '',
             gameServerDll: '',
@@ -46,16 +46,16 @@ export const useConfigStore = create<ConfigState>()(
                 if (!persistedState) {
                     return {
                         fortnitePath: '',
-                        backendUrl: 'https://api.leilos.qzz.io',
-                        hostUrl: 'http://api.leilos.qzz.io:7777',
+                        backendUrl: 'https://backend-leilos-services.crisu.qzz.io',
+                        hostUrl: 'http://backend-leilos-services.crisu.qzz.io:7777',
                         redirectDLL: '',
                         consoleDLL: '',
                         gameServerDll: '',
                         language: 'es'
                     };
                 }
-                persistedState.backendUrl = 'https://api.leilos.qzz.io';
-                persistedState.hostUrl = 'http://api.leilos.qzz.io:7777';
+                persistedState.backendUrl = 'https://backend-leilos-services.crisu.qzz.io';
+                persistedState.hostUrl = 'http://backend-leilos-services.crisu.qzz.io:7777';
                 
                 // Initialize new fields if they don't exist
                 if (typeof persistedState.redirectDLL === 'undefined') persistedState.redirectDLL = '';

@@ -45,6 +45,28 @@ app.on('window-all-closed', () => {
 });
 
 // IPC Handlers
+ipcMain.handle('get-player-count', async () => {
+  return new Promise((resolve, reject) => {
+    const https = require('https');
+    https.get('https://backend-leilos-services.crisu.qzz.io/api/v1/player-count', (res) => {
+      let data = '';
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          resolve(json.count);
+        } catch (e) {
+          reject(e);
+        }
+      });
+    }).on('error', (err) => {
+      reject(err);
+    });
+  });
+});
+
 ipcMain.handle('select-folder', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openDirectory'],
@@ -124,7 +146,7 @@ ipcMain.handle('launch', async (_, fortnitePath, user) => {
       `-AUTH_LOGIN=${email}`,
       `-AUTH_PASSWORD=${password}`,
       '-AUTH_TYPE=epic',
-      '-backend=https://api.leilos.qzz.io',
+      '-backend=https://backend-leilos-services.crisu.qzz.io',
     ];
 
     // 3. Launch

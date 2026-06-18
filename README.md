@@ -55,7 +55,7 @@ El ejecutable se generará en `src-tauri/target/release/bundle/`.
 ### URLs del Backend
 
 Por defecto, el launcher se conecta a:
-- Backend: `https://api.leilos.qzz.io:443`
+- Backend: `https://backend-leilos-services.crisu.qzz.io:443`
 - Host: `http://*.leilos.qzz.io:7777`
 
 Puedes cambiar estas URLs en el menú de Settings del launcher.
@@ -88,7 +88,7 @@ En la primera ejecución, deberás seleccionar la carpeta ROOT de tu instalació
 
 ### Error de autenticación
 - Verifica tus credenciales
-- Comprueba que el backend en `api.leilos.qzz.io` esté accesible
+- Comprueba que el backend en `backend-leilos-services.crisu.qzz.io` esté accesible
 
 ## Tecnologías Utilizadas
 

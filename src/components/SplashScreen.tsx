@@ -21,7 +21,7 @@ const SplashScreen: React.FC = () => {
                 <div 
                     className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-all duration-700"
                     style={{ 
-                        backgroundImage: `url('https://cdn.leilos.qzz.io/public/media/images/logo/Fort_Load_SeasonKeyArt.png')`,
+                        backgroundImage: `url('/Fort_Load_SeasonKeyArt.png')`,
                     }}
                 >
                     {/* Subtle gradient for text readability without hiding the art */}

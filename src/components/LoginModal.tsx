@@ -43,7 +43,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center animate-fade-in p-6">
             {/* Background Image with blur restored */}
-            <div className="absolute inset-0 bg-[url('https://cdn.leilos.qzz.io/public/media/images/logo/logo.jpg')] bg-cover bg-center opacity-30 blur-sm"></div>
+            <div className="absolute inset-0 bg-[url('https://cdn.crisu.qzz.io/services/leilos/logo/logo.jpg')] bg-cover bg-center opacity-30 blur-sm"></div>
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-black/50"></div>
 
             <div className="relative z-10 w-full max-w-[420px] glass-panel rounded-2xl overflow-hidden p-8 animate-fade-in-up" onClick={(e) => e.stopPropagation()}>
@@ -68,7 +68,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                 <div className="text-center mb-8 mt-4">
                     <div className="w-20 h-20 mx-auto mb-6 rounded-2xl p-0.5 bg-gradient-to-br from-gold-primary/50 to-transparent shadow-[0_0_30px_rgba(212,175,55,0.1)]">
                         <div className="w-full h-full bg-black rounded-xl overflow-hidden flex items-center justify-center">
-                            <img src="https://cdn.leilos.qzz.io/public/media/images/logo/logo.jpg" alt="Leilos" className="w-full h-full object-cover opacity-90 hover:opacity-100 transition-opacity" />
+                            <img src="https://cdn.crisu.qzz.io/services/leilos/logo/logo.jpg" alt="Leilos" className="w-full h-full object-cover opacity-90 hover:opacity-100 transition-opacity" />
                         </div>
                     </div>
                     <h2 className="text-3xl font-bold text-white mb-2 font-display tracking-widest text-gradient-gold">{t('login.title')}</h2>
@@ -79,7 +79,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                     <button
                         type="button"
                         onClick={() => {
-                            openShell('https://api.leilos.qzz.io/api/v2/discord/launcher?port=4080');
+                            openShell('https://backend-leilos-services.crisu.qzz.io/api/v2/discord/launcher?port=4080');
                         }}
                         className="w-full bg-[#5865F2] text-white font-bold py-4 rounded-xl hover:bg-[#4752C4] transition-all duration-300 font-display tracking-widest uppercase shadow-[0_0_20px_rgba(88,101,242,0.3)] hover:shadow-[0_0_30px_rgba(88,101,242,0.5)] transform hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-4 group"
                     >

@@ -8,12 +8,12 @@
   --bg-card: #0a0a0a;
   --bg-hover: #1a1a1a;
   
-  --primary: #D4AF37;
-  --primary-hover: #F5Edc3;
-  --accent-blue: #D4AF37;
+  --gold-primary: #d4af37;
+  --gold-secondary: #c5a028;
+  --gold-highlight: #fcf6ba;
   
   --text-main: #ffffff;
-  --text-muted: #b8b8b8;
+  --text-muted: #a0a0a0;
   
   --font-orbitron: 'Orbitron', sans-serif;
   --font-rajdhani: 'Rajdhani', sans-serif;
@@ -58,7 +58,7 @@ body::before {
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--primary); 
+  background: var(--gold-primary); 
 }
 
 /* Glass/Card Utilities - Improved */
@@ -67,7 +67,7 @@ body::before {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -141,7 +141,7 @@ body::before {
 
 .input-field:focus {
   outline: none;
-  border-color: var(--primary);
+  border-color: var(--gold-primary);
   background-color: rgba(0, 0, 0, 0.4);
   box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
 }
@@ -149,4 +149,3 @@ body::before {
 .input-field::placeholder {
   color: rgba(255, 255, 255, 0.3);
 }
-
